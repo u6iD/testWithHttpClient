@@ -48,17 +48,25 @@ public class SignInFreeCodeCamp {
         HttpGet getRequest = new HttpGet(SIGNOUT_URL);
         HttpResponse getResponse = client.execute(getRequest);
 
+        // check response code is 200
         Assert.assertEquals(getResponse.getStatusLine().getStatusCode(), 200, "Status code should be 200");
-        Assert.assertTrue(EntityUtils.toString(getResponse.getEntity()).contains("Sign in"),
-                "After sign out, page should contain the wording sign in but doesn't");
+
+        // check the returned html page contains "Sign in"
+        HttpEntity responseEntity = getResponse.getEntity();
+        long len = responseEntity.getContentLength();
+        if (len >= 0 && len <= 2048) {
+            Assert.assertTrue(EntityUtils.toString(responseEntity).contains("Sign in"),
+                    "After sign out, page should contain the wording \"Sign in\" but doesn't");
+        }
     }
 
     @Test()
+    // need to fill in values for CORRECT_EMAIL and CORRECT_PWD before the test can pass
     public static void logInPost() throws IOException, URISyntaxException {
         final String PARAM1_NAME = "email", PARAM2_NAME = "password",
                 CORRECT_EMAIL = "", CORRECT_PWD = "",
-                POST_URL = "https://www.freecodecamp.com/api/users/login",
-                REDIRECT_URL = "https://www.freecodecamp.com/challenges/learn-how-free-code-camp-works";
+                POST_URL = "https://www.freecodecamp.com/api/users/login";
+        final URI REDIRECT_URL = new URI("https://www.freecodecamp.com/challenges/learn-how-free-code-camp-works");
 
         List<NameValuePair> formParams = new ArrayList();
         formParams.add(new BasicNameValuePair(PARAM1_NAME , CORRECT_EMAIL));
@@ -73,8 +81,11 @@ public class SignInFreeCodeCamp {
         CloseableHttpResponse postResponse = client.execute(postRequset, context);
 
         try {
+            // check that Post request eventually returns status code 200
             Assert.assertEquals(postResponse.getStatusLine().getStatusCode(), 200, "Status code should be 200 but isn't");
 
+            // check after signing in, the returned html page contains the welcome message
+            // "Welcome to Free Code Camp."
             HttpEntity responseEntity = postResponse.getEntity();
             long len = responseEntity.getContentLength();
             if (len >= 0 && len <= 2048) {
@@ -82,10 +93,11 @@ public class SignInFreeCodeCamp {
                         "After sign in page should contain the welcome message but doesn't");
             }
 
+            // check the final URL after redirects is /challenges/learn-how-free-code-camp-works
             HttpHost target = context.getTargetHost();
             List<URI> redirectLocations = context.getRedirectLocations();
             URI location = URIUtils.resolve(postRequset.getURI(), target, redirectLocations);
-            Assert.assertEquals(location, new URI(REDIRECT_URL), "Final URL should be \"/challenges/learn-how-free-code-camp-works\", but isn't");
+            Assert.assertEquals(location, REDIRECT_URL, "Final URL should be \"/challenges/learn-how-free-code-camp-works\", but isn't");
         } finally {
             if (postResponse != null) {
                 postResponse.close();
